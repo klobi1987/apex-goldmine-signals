@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ExternalLink, Calculator } from "lucide-react";
+import { ArrowLeft, ExternalLink, Calculator, Clock, Activity, Zap, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,12 +14,59 @@ import { TechnicalAnalysisChart } from "@/components/TechnicalAnalysisChart";
 import { tradingData } from "@/data/tradingData";
 import { formatPrice, formatPercentage, formatVolume, getBybitUrl, copyToClipboard } from "@/utils/clipboard";
 
+type TimeframeType = "4h" | "1h" | "15m";
+
 const CoinDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [showTradeSimulator, setShowTradeSimulator] = useState(false);
+  
+  // Get timeframe from URL params, default to 15m for scalping focus
+  const activeTimeframe = (searchParams.get("timeframe") as TimeframeType) || "15m";
 
   const coin = useMemo(() => 
     tradingData.find(c => c.symbol === symbol), [symbol]);
+
+  // Update URL when timeframe changes
+  const handleTimeframeChange = (timeframe: TimeframeType) => {
+    setSearchParams({ timeframe });
+  };
+
+  // Cross-timeframe confluence analysis
+  const confluenceAnalysis = useMemo(() => {
+    if (!coin) return null;
+    
+    const timeframes = [
+      { key: "ta_4h", name: "4H", data: coin.ta_4h },
+      { key: "ta_1h", name: "1H", data: coin.ta_1h },
+      { key: "ta_15m", name: "15M", data: coin.ta_15m }
+    ];
+    
+    const signals = timeframes.map(tf => tf.data.elite_analysis.trading_decision);
+    const strongBuyCount = signals.filter(s => s === "STRONG_BUY").length;
+    const buyCount = signals.filter(s => s.includes("BUY")).length;
+    const sellCount = signals.filter(s => s.includes("SELL")).length;
+    
+    let confluenceLevel = "NEUTRAL";
+    let confluenceColor = "text-muted-foreground";
+    
+    if (strongBuyCount >= 2) {
+      confluenceLevel = "STRONG BULLISH CONFLUENCE";
+      confluenceColor = "text-bullish";
+    } else if (buyCount === 3) {
+      confluenceLevel = "BULLISH CONFLUENCE";
+      confluenceColor = "text-bullish";
+    } else if (sellCount >= 2) {
+      confluenceLevel = "BEARISH CONFLUENCE";
+      confluenceColor = "text-bearish";
+    } else if (buyCount >= 2) {
+      confluenceLevel = "WEAK BULLISH";
+      confluenceColor = "text-info";
+    }
+    
+    return { level: confluenceLevel, color: confluenceColor, signals: timeframes };
+  }, [coin]);
 
   if (!coin) {
     return (
@@ -207,31 +254,128 @@ const CoinDetail = () => {
             </AccordionItem>
           </Accordion>
 
-          {/* Technical Analysis */}
-          <Accordion type="single" collapsible>
+          {/* Cross-Timeframe Confluence Banner */}
+          {confluenceAnalysis && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6"
+            >
+              <Card className="bg-gradient-card border-2 border-primary/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                      <div>
+                        <h3 className="font-semibold">Multi-Timeframe Analysis</h3>
+                        <p className={`text-sm ${confluenceAnalysis.color}`}>
+                          {confluenceAnalysis.level}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {confluenceAnalysis.signals.map((tf) => (
+                        <Badge
+                          key={tf.key}
+                          variant={tf.data.elite_analysis.trading_decision.includes("BUY") ? "default" : "outline"}
+                          className="text-xs"
+                        >
+                          {tf.name}: {tf.data.elite_analysis.trading_decision}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Technical Analysis with Enhanced Timeframe Navigation */}
+          <Accordion type="single" collapsible defaultValue="technical">
             <AccordionItem value="technical">
               <AccordionTrigger className="text-xl font-semibold">
-                Technical Analysis
+                Technical Analysis - Multi-Timeframe
               </AccordionTrigger>
               <AccordionContent>
-                <Tabs defaultValue="4h" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="4h">4H Timeframe</TabsTrigger>
-                    <TabsTrigger value="1h">1H Timeframe</TabsTrigger>
-                    <TabsTrigger value="15m">15M Timeframe</TabsTrigger>
+                {/* Enhanced Timeframe Selector */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">Select Timeframe</h3>
+                    <div className="flex gap-2">
+                      {[
+                        { value: "4h", label: "4H", icon: Clock, desc: "Swing Trading" },
+                        { value: "1h", label: "1H", icon: Activity, desc: "Day Trading" },
+                        { value: "15m", label: "15M", icon: Zap, desc: "Scalping" }
+                      ].map((tf) => (
+                        <Button
+                          key={tf.value}
+                          variant={activeTimeframe === tf.value ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleTimeframeChange(tf.value as TimeframeType)}
+                          className="flex items-center gap-2"
+                        >
+                          <tf.icon className="h-4 w-4" />
+                          {tf.label}
+                          <span className="text-xs opacity-70">({tf.desc})</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <Tabs value={activeTimeframe} onValueChange={(value) => handleTimeframeChange(value as TimeframeType)} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 h-12">
+                    <TabsTrigger value="4h" className="flex items-center gap-2 text-sm">
+                      <Clock className="h-4 w-4" />
+                      4H Swing
+                    </TabsTrigger>
+                    <TabsTrigger value="1h" className="flex items-center gap-2 text-sm">
+                      <Activity className="h-4 w-4" />
+                      1H Day
+                    </TabsTrigger>
+                    <TabsTrigger value="15m" className="flex items-center gap-2 text-sm bg-primary/10">
+                      <Zap className="h-4 w-4" />
+                      15M Scalp
+                    </TabsTrigger>
                   </TabsList>
                   
-                  <TabsContent value="4h" className="space-y-4">
-                    <TechnicalAnalysisChart data={coin.ta_4h} />
-                  </TabsContent>
-                  
-                  <TabsContent value="1h" className="space-y-4">
-                    <TechnicalAnalysisChart data={coin.ta_1h} />
-                  </TabsContent>
-                  
-                  <TabsContent value="15m" className="space-y-4">
-                    <TechnicalAnalysisChart data={coin.ta_15m} />
-                  </TabsContent>
+                  <div className="mt-6">
+                    <TabsContent value="4h" className="space-y-4 mt-0">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-lg font-semibold">4H Timeframe - Swing Trading</h4>
+                        <CopyButton 
+                          text={JSON.stringify(coin.ta_4h, null, 2)} 
+                          description="4H timeframe data copied"
+                          variant="outline"
+                        />
+                      </div>
+                      <TechnicalAnalysisChart data={coin.ta_4h} />
+                    </TabsContent>
+                    
+                    <TabsContent value="1h" className="space-y-4 mt-0">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-lg font-semibold">1H Timeframe - Day Trading</h4>
+                        <CopyButton 
+                          text={JSON.stringify(coin.ta_1h, null, 2)} 
+                          description="1H timeframe data copied"
+                          variant="outline"
+                        />
+                      </div>
+                      <TechnicalAnalysisChart data={coin.ta_1h} />
+                    </TabsContent>
+                    
+                    <TabsContent value="15m" className="space-y-4 mt-0">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-lg font-semibold">15M Timeframe - Scalping Focus</h4>
+                        <CopyButton 
+                          text={JSON.stringify(coin.ta_15m, null, 2)} 
+                          description="15M timeframe data copied"
+                          variant="outline"
+                        />
+                      </div>
+                      <TechnicalAnalysisChart data={coin.ta_15m} />
+                    </TabsContent>
+                  </div>
                 </Tabs>
               </AccordionContent>
             </AccordionItem>

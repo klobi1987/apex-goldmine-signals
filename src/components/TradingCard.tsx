@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ExternalLink, TrendingUp, TrendingDown } from "lucide-react";
+import { ExternalLink, TrendingUp, TrendingDown, Clock, Activity, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -146,9 +146,34 @@ export const TradingCard = ({ coin, index }: TradingCardProps) => {
             </div>
           </div>
 
+          {/* Timeframe Quick Access */}
+          <div className="space-y-2 mb-4">
+            <p className="text-xs font-medium text-muted-foreground">Quick Timeframe Access:</p>
+            <div className="flex gap-1">
+              {[
+                { tf: "4h", icon: Clock, label: "4H", desc: "Swing" },
+                { tf: "1h", icon: Activity, label: "1H", desc: "Day" },
+                { tf: "15m", icon: Zap, label: "15M", desc: "Scalp" }
+              ].map((timeframe) => (
+                <Button
+                  key={timeframe.tf}
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 h-8 text-xs"
+                >
+                  <Link to={`/coin/${coin.symbol}?timeframe=${timeframe.tf}`}>
+                    <timeframe.icon className="h-3 w-3 mr-1" />
+                    {timeframe.label}
+                  </Link>
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {/* Action Button */}
           <Button asChild className="w-full bg-gradient-primary hover:shadow-glow">
-            <Link to={`/coin/${coin.symbol}`}>
+            <Link to={`/coin/${coin.symbol}?timeframe=15m`}>
               View Trading Details
             </Link>
           </Button>
