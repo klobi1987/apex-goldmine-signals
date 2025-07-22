@@ -10,7 +10,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CopyButton } from "@/components/CopyButton";
 import { TradeSimulator } from "@/components/TradeSimulator";
-import { TechnicalAnalysisChart } from "@/components/TechnicalAnalysisChart";
+import { ProfessionalTradingChart } from "@/components/ProfessionalTradingChart";
+import { N8nIntegrationPanel } from "@/components/N8nIntegrationPanel";
+import { useN8nIntegration } from "@/hooks/useN8nIntegration";
 import { tradingData } from "@/data/tradingData";
 import { formatPrice, formatPercentage, formatVolume, getBybitUrl, copyToClipboard } from "@/utils/clipboard";
 
@@ -21,6 +23,7 @@ const CoinDetail = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [showTradeSimulator, setShowTradeSimulator] = useState(false);
+  const [n8nData, setN8nData] = useState<any>(null);
   
   // Get timeframe from URL params, default to 15m for scalping focus
   const activeTimeframe = (searchParams.get("timeframe") as TimeframeType) || "15m";
@@ -349,7 +352,12 @@ const CoinDetail = () => {
                           variant="outline"
                         />
                       </div>
-                      <TechnicalAnalysisChart data={coin.ta_4h} />
+                      <ProfessionalTradingChart 
+                        data={coin.ta_4h} 
+                        coinSymbol={coin.symbol}
+                        coinName={coin.name}
+                        n8nData={n8nData}
+                      />
                     </TabsContent>
                     
                     <TabsContent value="1h" className="space-y-4 mt-0">
@@ -361,7 +369,12 @@ const CoinDetail = () => {
                           variant="outline"
                         />
                       </div>
-                      <TechnicalAnalysisChart data={coin.ta_1h} />
+                      <ProfessionalTradingChart 
+                        data={coin.ta_1h} 
+                        coinSymbol={coin.symbol}
+                        coinName={coin.name}
+                        n8nData={n8nData}
+                      />
                     </TabsContent>
                     
                     <TabsContent value="15m" className="space-y-4 mt-0">
@@ -373,15 +386,29 @@ const CoinDetail = () => {
                           variant="outline"
                         />
                       </div>
-                      <TechnicalAnalysisChart data={coin.ta_15m} />
-                    </TabsContent>
-                  </div>
-                </Tabs>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+                      <ProfessionalTradingChart 
+                        data={coin.ta_15m} 
+                        coinSymbol={coin.symbol}
+                        coinName={coin.name}
+                        n8nData={n8nData}
+                       />
+                     </TabsContent>
+                   </div>
+                 </Tabs>
+               </AccordionContent>
+             </AccordionItem>
+           </Accordion>
 
-          {/* Order Book & Contract */}
+          {/* N8N Integration Panel */}
+          <div className="mt-6">
+            <N8nIntegrationPanel 
+              coinSymbol={coin?.symbol}
+              timeframe={activeTimeframe}
+              onMerge2Data={setN8nData}
+            />
+          </div>
+
+           {/* Order Book & Contract */}
           <Accordion type="single" collapsible>
             <AccordionItem value="orderbook">
               <AccordionTrigger className="text-xl font-semibold">
@@ -441,4 +468,4 @@ const CoinDetail = () => {
   );
 };
 
-export default CoinDetail;
+export { CoinDetail };
