@@ -100,91 +100,51 @@ export const useN8nIntegration = () => {
     }
   }, [config.webhookUrl, config.enabled, config.apiKey]);
 
-  // Send data to N8N workflow
   const sendToN8n = useCallback(async (data: any) => {
-    if (!config.webhookUrl || !config.enabled) {
-      toast({
-        title: "N8N Not Connected",
-        description: "Please configure N8N webhook URL first",
-        variant: "destructive",
-      });
-      return false;
-    }
+    if (!config.webhookUrl || !config.enabled) return false;
 
     setIsLoading(true);
     try {
-      const payload = {
-        action: 'receive_trading_data',
-        data: data,
-        timestamp: new Date().toISOString(),
-      };
-
-      const response = await fetch(config.webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` }),
-        },
-        mode: 'no-cors', // Handle CORS for webhook calls
-        body: JSON.stringify(payload),
-      });
-
-      toast({
-        title: "Data Sent to N8N",
-        description: "Trading data successfully sent to N8N workflow",
-      });
-      return true;
-    } catch (error) {
-      console.error('Failed to send data to N8N:', error);
-      toast({
-        title: "N8N Error",
-        description: "Failed to send data to N8N workflow",
-        variant: "destructive",
-      });
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [config.webhookUrl, config.enabled, config.apiKey]);
-
-  // Test N8N connection
-  const testConnection = useCallback(async () => {
-    if (!config.webhookUrl) {
-      toast({
-        title: "No Webhook URL",
-        description: "Please enter a webhook URL first",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch(config.webhookUrl, {
+      await fetch(config.webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` }),
         },
         mode: 'no-cors',
-        body: JSON.stringify({
-          action: 'test_connection',
-          timestamp: new Date().toISOString(),
-        }),
+        body: JSON.stringify({ action: 'receive_trading_data', data, timestamp: new Date().toISOString() }),
       });
-
-      toast({
-        title: "Connection Test Sent",
-        description: "Test request sent to N8N. Check your workflow for confirmation.",
-      });
+      toast({ title: "Data Sent to N8N" });
       return true;
     } catch (error) {
-      console.error('Connection test failed:', error);
-      toast({
-        title: "Connection Test Failed",
-        description: "Unable to reach N8N webhook",
-        variant: "destructive",
+      toast({ title: "N8N Error", variant: "destructive" });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [config.webhookUrl, config.enabled, config.apiKey]);
+
+  const testConnection = useCallback(async () => {
+    if (!config.webhookUrl) {
+      toast({ title: "No Webhook URL", variant: "destructive" });
+      return false;
+    }
+
+    setIsLoading(true);
+    try {
+      await fetch(config.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` }),
+        },
+        mode: 'no-cors',
+        body: JSON.stringify({ action: 'test_connection', timestamp: new Date().toISOString() }),
       });
+      toast({ title: "Test Sent to N8N" });
+      return true;
+    } catch (error) {
+      toast({ title: "Test Failed", variant: "destructive" });
       return false;
     } finally {
       setIsLoading(false);
